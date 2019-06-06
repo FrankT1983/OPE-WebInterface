@@ -1,0 +1,176 @@
+{% extends "OPP/base.html" %}
+
+{% load staticfiles %}
+{% csrf_token %}
+
+
+{% block content %}
+
+
+{% if found %}
+    <div id="canvasHere" widht="1200px">
+
+    </div>
+
+
+    <script>
+        // code snipet I got from : http://stackoverflow.com/questions/29489468/popup-tooltip-for-rectangular-region-drawn-in-canvas
+        // The Tool-Tip instance:
+        function ToolTip(canvas, region, text, width, timeout) {
+
+          var me = this,                                // self-reference for event handlers
+              div = document.createElement("div"),      // the tool-tip div
+              parent = canvas.parentNode,               // parent node for canvas
+              visible = false;                          // current status
+
+          // set some initial styles, can be replaced by class-name etc.
+          div.style.cssText = "position:fixed;padding:7px;background:gold;pointer-events:none;width:" + width + "px";
+          div.innerHTML = text;
+
+          // show the tool-tip
+          this.show = function(pos) {
+            if (!visible) {                             // ignore if already shown (or reset time)
+              visible = true;                           // lock so it's only shown once
+              setDivPos(pos);                           // set position
+              parent.appendChild(div);                  // add to parent of canvas
+              setTimeout(hide, timeout);                // timeout for hide
+            }
+          }
+
+          // hide the tool-tip
+          function hide() {
+            visible = false;                            // hide it after timeout
+            parent.removeChild(div);                    // remove from DOM
+          }
+
+          // check mouse position, add limits as wanted... just for example:
+          function check(e) {
+            var pos = getPos(e),
+                posAbs = {x: e.clientX, y: e.clientY};  // div is fixed, so use clientX/Y
+            if (!visible &&
+                pos.x >= region.x && pos.x < region.x + region.w &&
+                pos.y >= region.y && pos.y < region.y + region.h) {
+              me.show(posAbs);                          // show tool-tip at this pos
+            }
+            else setDivPos(posAbs);                     // otherwise, update position
+          }
+
+          // get mouse position relative to canvas
+          function getPos(e) {
+            var r = canvas.getBoundingClientRect();
+            return {x: e.clientX - r.left, y: e.clientY - r.top}
+          }
+
+          // update and adjust div position if needed (anchor to a different corner etc.)
+          function setDivPos(pos) {
+            if (visible){
+              if (pos.x < 0) pos.x = 0;
+              if (pos.y < 0) pos.y = 0;
+              // other bound checks here
+              div.style.left = pos.x + "px";
+              div.style.top = pos.y + "px";
+            }
+          }
+
+          // we need to use shared event handlers:
+          canvas.addEventListener("mousemove", check);
+          canvas.addEventListener("click", check);
+
+        }
+
+    </script>
+
+
+
+    <script>
+        jsonText = "{{StatisticsData|escapejs }}"
+        workerStats = JSON.parse(jsonText);
+
+        canvasPane = document.getElementById("canvasHere")
+
+        earliestStart = Infinity;
+        latestEnd = 0;
+        workerCount = 0;
+
+        for( workerID in workerStats.Statistics)
+        {
+            worker = workerStats.Statistics[workerID];
+            if (worker.Start>0)
+            {
+                earliestStart = Math.min(earliestStart,worker.Start)
+            }
+
+            for( e in worker.Entries)
+            {
+                entr = worker.Entries[e]
+                dur = parseInt(entr.Duration.replace("millis",""))
+                latestEnd = Math.max( entr.StartTime + dur,latestEnd)
+            }
+            workerCount ++;
+        }
+        duration = latestEnd - earliestStart
+
+        tips = []
+        var canvas = document.createElement('canvas');
+        //canvas.style.marginTop = "120px";
+
+        barW = 1000
+        barH = 100
+        canvasPane.appendChild(canvas);
+        canvas.style.width = 1100* workerCount;
+        canvas.style.height = barH * workerCount;
+        canvas.width = (barW + 20)*workerCount;
+        canvas.height = (barH +20) * workerCount;
+        var ctx=canvas.getContext("2d");
+
+        wId = 0;
+        for( workerID in workerStats.Statistics)
+        {
+            worker = workerStats.Statistics[workerID];
+
+            barYStart =10 + (wId * (barH +20))
+
+            ctx.strokeRect(10, barYStart ,barW,barH);
+            workerStart = worker.Start;
+
+            // find endtime
+            for( e in worker.Entries)
+            {
+                entr = worker.Entries[e]
+                dur = parseInt(entr.Duration.replace("millis",""))
+
+                start = entr.StartTime-earliestStart;
+                startPercent = start / duration;
+                durationPercent = (dur) / duration;
+
+                var ctx=canvas.getContext("2d");
+                x = 10+startPercent*barW;
+                y = barYStart;
+                w = durationPercent*barW;
+                h = barH;
+
+                if (entr.Type == "Initialization")
+                    ctx.fillStyle="#FF0000";
+                else if (entr.Type =="Calculation")
+                    ctx.fillStyle="#0000FF";
+                else
+                    ctx.fillStyle="#000000";
+
+                ctx.fillRect(x,y,w,h);
+
+                region = {x: x, y: y, w: w, h: h}
+                tips.push(new ToolTip(canvas, region, entr.BlockType + " Duration: " + entr.Duration.toString(), 150, 3000));
+            }
+            wId++;
+        }
+
+
+    </script>
+
+
+{% else %}
+    <br>
+        Not Found
+    </br>
+{% endif %}
+{% endblock %}

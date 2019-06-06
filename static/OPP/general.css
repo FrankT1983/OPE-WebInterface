@@ -1,0 +1,10 @@
+.ImagePreview
+{
+    max-width:300px;
+    margin:10px;
+}
+
+p#preview
+{
+    background: gray;
+}

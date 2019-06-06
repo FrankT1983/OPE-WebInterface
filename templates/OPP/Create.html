@@ -1,0 +1,71 @@
+{% extends "OPP/base.html" %}
+
+{% load staticfiles %}
+{% csrf_token %}
+
+{% block content %}
+    <script>
+        elementId = 0
+    </script>
+
+    <link rel="stylesheet" type="text/css" href="{% static 'OPP/demo.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'OPP/general.css' %}" />
+
+    <div class="BlockBar leftMenu" id="leftSideBar">
+        <ul>
+
+
+        {% if available_blocks %}
+            {% for block in available_blocks %}
+                <li><a id="create{{block.Id}}">{{block.Name}}</a></li>
+                <script>
+                    const inputs{{block.Id}} = [ {% for in in block.Inputs %} '{{in.Id}}', {% endfor %} ]
+                    const outputs{{block.Id}} = [{% for out in block.Outputs %} '{{out.Id}}', {% endfor %} ]
+                    const formInputs{{block.Id}} = [{% for out in block.FormInputs %} '{{out.Id}}', {% endfor %} ]
+                    document.getElementById("create{{block.Id}}").addEventListener("click", function()
+                        {
+                            block = createBlock(elementId++, "{{block.Name}}","{{block.Id}}" ,"{{block.Type}}"  ,inputs{{block.Id}}, outputs{{block.Id}}, formInputs{{block.Id}} ,100, 100, true, true);
+                            {% if block.GitRepo%}
+                            block.setAttribute("data-git-Repo" ,"{{block.GitRepo}}" );
+                            block.setAttribute("data-git-Path" ,"{{block.GitFilePath}}" );{% endif %}
+                        }, false);
+
+
+                </script>
+            {% endfor %}
+        {% endif %}
+
+        <li><button class="blockMenuButton" onclick="save()">Save</button></li>
+        </ul>
+
+        <script>
+            function save()
+            {
+                var name = prompt("Please enter a name for this workflow", "my workflow");
+
+                var serializedData = serialize(instance, $("#jsPlumbCanvas .window") , name);
+                $.ajaxSetup({
+                    beforeSend: function(xhr, settings) {
+                        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                        }
+                    }
+                });
+                $.post(
+                        "save/",
+                        {msg: serializedData},
+                        function(data) {
+                            //alert("Data Loaded: " + data);
+                            alert(data);
+                });
+            }
+
+        </script>
+
+
+        </div>
+
+    <div class="jtk-demo-main">
+        <div class="jtk-demo-canvas canvas-wide flowchart-demo jtk-surface jtk-surface-nopan" id="jsPlumbCanvas"/>
+    </div>
+{% endblock %}

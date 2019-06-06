@@ -1,0 +1,67 @@
+{% extends "OPP/base.html" %}
+
+{% load staticfiles %}
+{% csrf_token %}
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'OPP/demo.css' %}" />
+
+    <div class="BlockBar leftMenu" id="leftSideBar">
+        <ul>
+        {% if available_workflows %}
+            {% for flow in available_workflows %}
+                {% if flow.1%}
+                    <li><a id="view{{flow.0}}">View Workflow '{{flow.1}}'</a></li>
+                {% else %}
+                    <li><a id="view{{flow.0}}">View Workflow {{flow.0}}</a></li>
+                {% endif %}
+                <script>
+                    document.getElementById("view{{flow.0}}")
+                        .addEventListener("click", function()
+                            {
+                                 currentSelection = {{flow.0}}
+                                 {% if flow.1%}
+                                    currentSelectionName = "{{flow.1}}"
+                                 {% else %}
+                                    currentSelectionName = "unnamed"
+                                 {% endif %}
+                                clearCanvas()
+                                deSerialize('{%url 'GetWorkflow' flow.0 %}' , '{%url 'GetBlock' 'replace' %}');
+                            }, false);
+                </script>
+            {% endfor %}
+        {% endif %}
+        </ul>
+    </div>
+
+    <div class="leftMenu" id="leftSideBar2">
+        <ul>
+            <li><button class="blockMenuButton" id="run" onclick="redirectToPrepRun()">Run Current Workflow</button></li>
+            <script>
+                function redirectToPrepRun()
+                {
+                    link = "{%url 'PrepareRun' '42'%}"
+                    link = link.replace("42",currentSelection).replace("//","/");
+                    window.location.href = link;
+                }
+            </script>
+
+            <li><button class="blockMenuButton" id="run" onclick="deleteWorkflow()">Delete Current Workflow</button></li>
+            <script>
+                function deleteWorkflow()
+                {
+                    if (confirm("Do you realy want to delete workflow \"" + currentSelectionName + "\""))
+                    {
+                        link = "{%url 'DeleteWorkflow' '42'%}"
+                        link = link.replace("42",currentSelection).replace("//","/");
+                        window.location.href = link;
+                    }
+                }
+            </script>
+        </ul>
+    </div>
+
+    <div class="jtk-demo-main">
+        <div class="jtk-demo-canvas canvas-wide flowchart-demo jtk-surface jtk-surface-nopan" id="jsPlumbCanvas"/>
+    </div>
+{% endblock %}

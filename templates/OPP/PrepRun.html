@@ -1,0 +1,138 @@
+{% extends "OPP/base.html" %}
+
+{% load staticfiles %}
+{% csrf_token %}
+
+{% block content %}
+    <script>
+        hierarchy_json = "{}"
+        {% if full_hierarchy %}
+        hierarchy_json="{{full_hierarchy|escapejs}}"
+        {% endif %}
+        hierarchy = JSON.parse(hierarchy_json)
+
+        groupIcon = "{% static 'image_picker/images/group_green16.png' %}"
+        datasetIcon = "{% static 'image_picker/images/folder_image16.png' %}"
+        imageIcon = "{% static 'image_picker/images/image_16.png' %}"
+    </script>
+
+    <link rel="stylesheet" type="text/css" href="{% static 'OPP/demo.css' %}" />
+    <div class="leftMenu" id="leftSideBar">
+        <ul>
+            <form id="runForm" action="{%url 'ExecuteRun' workflowId %}">
+
+            <li><input class="MenuButton" type="submit" value="Run"></li>
+            <li><input class="MenuCheckBox" type="checkbox" name="intermediates" value="record">Record Intermediates</li>
+             {% if openInputs %}    {% for input in openInputs %}
+                    <li>
+                        {% if  input.2 == "image" or  input.2 == "dataset" %}
+                            <div class="listEntry popup" id="inputfor_{{input.0}}{{blockPortSeparator}}{{input.1}}">
+                                {{input.1}} <input type="text" name="{{input.0}}{{blockPortSeparator}}{{input.1}}"
+                                                         id="text_input_for_{{input.0}}{{blockPortSeparator}}{{input.1|cut:" "}}"
+                                                         onfocus="onFocusInput(this)" onblur="deFocusInput(this)"/>
+                                <button type="button" id="popup_for_{{input.0}}{{blockPortSeparator}}{{input.1|cut:" "}}"> pick </button>
+                            </div>
+                            <script>
+                             $( document ).ready(function() {
+                                ConstructSelectionPopupOnBody("input_pop_for_{{input.0}}{{blockPortSeparator}}{{input.1|cut:" "}}",
+                                                        $('#popup_for_{{input.0}}{{blockPortSeparator}}{{input.1|cut:" "}}')[0],
+                                                        $('#text_input_for_{{input.0}}{{blockPortSeparator}}{{input.1|cut:" "}}')[0],
+                                                            hierarchy.data ,  "{{input.2}}" , '{% url 'getThumbAddress' imageId='9999999999' %}')});
+                            </script>
+                        {%else%}
+                            <div class="listEntry" id="inputfor_{{input.0}}{{blockPortSeparator}}{{input.1}}">
+                                {{input.1}} <input type="text" name="{{input.0}}{{blockPortSeparator}}{{input.1}}"  onfocus="onFocusInput(this)" onblur="deFocusInput(this)"/>
+                            </div>
+                        {% endif %}
+                    </li>
+            {% endfor %} {% endif %}
+                {% if hiddenInputs %}    {% for input in hiddenInputs %}
+                     <input type="text" name="{{input.0}}{{blockPortSeparator}}{{input.1}}"  value="{{input.2}}" hidden="hidden"/>
+            {% endfor %} {% endif %}
+            </form>
+        </ul>
+    </div>
+
+    <div class="jtk-demo-main">
+        <div class="jtk-demo-canvas canvas-wide flowchart-demo jtk-surface jtk-surface-nopan" id="jsPlumbCanvas"/>
+    </div>
+
+    <script>
+        function onFocusInput(origin)
+        {
+            res = origin.name.split("{{blockPortSeparator}}")
+            toHighlight = document.getElementById(res[0])
+            if (toHighlight != null)
+            {
+                toHighlight.className += " highlight"
+            }
+
+            connections = instance.getConnections({ source:"inputfor_"+origin.name});
+            con = connections[0]
+            con.addType("basic")
+        }
+
+        function deFocusInput(origin)
+        {
+            res = origin.name.split("{{blockPortSeparator}}")
+            deHighlight = document.getElementById(res[0])
+            if (deHighlight != null)
+            {
+                deHighlight.className = deHighlight.className.replace( /(?:^|\s)highlight(?!\S)/g , '' )
+            }
+
+            connections = instance.getConnections({ source:"inputfor_"+origin.name});
+            con = connections[0]
+            con.removeType("basic")
+        }
+
+        $( document ).ready(function() {
+            deSerialize('{%url 'GetWorkflow'  workflowId %}' , '{%url 'GetBlock' 'replace' %}' ,'{%url 'GetGitVersions' gitUrl='gitUrlReplace' gitPath='gitPathReplace'%}')
+            {% if openInputs %}
+            .then(function()
+            {
+                // connect inputs to graph
+                {% for input in openInputs %}
+                instance.connect(
+                        {
+                            target : "{{input.0}}" ,
+                            source: "inputfor_{{input.0}}{{blockPortSeparator}}{{input.1}}",
+                            paintStyle:{lineWidth:2,strokeStyle:'rgb(166, 166, 166)'},
+                            anchors:["Right", "Top"],
+                            connector:"StateMachine"
+                        }
+                    );
+                {% endfor %}
+
+            });
+           {% endif %}
+
+           $( "#runForm" ).submit(function( event )
+           {
+                //event.preventDefault();
+                canvas = $("#jsPlumbCanvas .window")
+                inputForm = $( "#runForm" )
+                canvas.each(function (idx, elem) {
+                    var $elem = $(elem);
+                    versions = $elem.find("#VersionSelect")
+                    if (versions.length > 0)
+                    {
+                        versions = versions[0]
+                        version = versions[versions.selectedIndex]
+                        hash = version.attributes["commit_hash"]
+                        // add as hidden field to form
+
+                        var entry = document.createElement('input');
+                        entry.type="text"
+                        entry.hidden="hidden"
+                        entry.value = hash.value
+                        entry.name = $elem.attr('id')+ "{{blockPortSeparator}}" +"Version"
+                        inputForm[0].appendChild(entry)
+                    }
+                });
+            });
+          });
+    </script>
+
+
+{% endblock %}

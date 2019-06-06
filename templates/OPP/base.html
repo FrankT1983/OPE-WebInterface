@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% load staticfiles %}
+{% csrf_token %}
+
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<script src="{% static 'OPP/jquery-3.1.0.js' %}"></script>
+<script type="text/javascript" src="{% static 'OPP/menu/function.js' %}"></script>
+<link rel="stylesheet" type="text/css" href="{% static 'OPP/menu.css' %}">
+<link rel="stylesheet" href="{% static 'OPP/jquery-ui-1.12.1/jquery-ui.min.css' %}">
+<script src="{% static 'OPP/jquery-ui-1.12.1/jquery-ui.min.js' %}"></script>
+
+
+<head>
+    <meta charset="UTF-8">
+    <title>Distributed Processing in OMERO</title>
+</head>
+<body>
+<div id="MenuStuff">
+     <div style="background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%,hsl(212,8%,49%)), color-stop(100%,hsl(212,8%,34%)));
+                font-size:22px; text-align:center; color:#FFF; font-weight:bold; height:60px; padding-top:30px;">Distributed Processing in OMERO</div>
+        <div id="wrap">
+        <!-- Basic menu structure from  https://www.freshdesignweb.com/responsive-drop-down-menu-jquery-css3-using-icon-symbol/ tutorial-->
+        <header>
+            <div class="inner relative">
+                <a id="menu-toggle" class="button dark" href="#"><i class="icon-reorder"></i></a>
+                <nav id="navigation">
+                    <ul id="main-menu">
+                        <li class="current-menu-item"><a href="{% url 'ViewWorkflows'%}">View your workflows</a></li>
+                        <li class="current-menu-item"><a href="{% url 'CreateWorkflow'%}">Create new workflow</a></li>
+                        <li class="current-menu-item"><a href="{% url 'ViewRunOverview'%}">View Running workflows</a></li>
+                    </ul>
+                </nav>
+                <div class="clear"></div>
+            </div>
+        </header>
+    </div>
+</div>
+<div id="BlockContent">
+    {% block content %}
+    {%endblock %}
+</div>
+
+
+<script src="{% static 'OPP/jsPlumb-214.js' %}"></script>
+<script src="{% static 'OPP/createBlockFunction.js' %}"></script>
+<script src="{% static 'OPP/types.js' %}"></script>
+<script src="{% static 'OPP/main.js' %}"></script>
+<script src="{% static 'OPP/serialize.js' %}"></script>
+
+
+
+<link rel="stylesheet" href="{% static 'image_picker/themes/default/style.min.css' %}">
+<script src="{% static 'image_picker/jstree.min.js' %}"></script>
+<link rel="stylesheet" href="{% static 'image_picker/popup.css' %}">
+<script src="{% static 'image_picker/ImagePicker.js' %}"></script>
+
+
+
+</body>
+</html>

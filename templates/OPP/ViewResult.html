@@ -1,0 +1,234 @@
+{% extends "OPP/base.html" %}
+
+{% load staticfiles %}
+{% csrf_token %}
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'OPP/demo.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'OPP/general.css' %}" />
+
+    <div class="leftMenu" id="leftSideBar"></div>
+    <div class="flow-canvas flowchart-demo" id="jsPlumbCanvas"/>
+
+
+
+    <script>
+        function ConstructPreviewUrl(runId,blockName,portName, storageDataSet)
+        {
+            var url = '{% url 'ViewWorkResultPreview' runId='runIdReplace' blockId='blockIdReplace' portId='portIdReplacement' datasetId=99999999954 %}'
+            url = url.replace('runIdReplace',runId)
+            url = url.replace('blockIdReplace',blockName)
+            url = url.replace('portIdReplacement',portName)
+            url = url.replace('99999999954',storageDataSet)
+
+            return url;
+        }
+
+        function ConstructStatisticsButton(ul)
+        {
+            var li = document.createElement('li');
+            var div = document.createElement('div');
+            div.className = "listEntry"
+            var button = document.createElement('button');
+            button.setAttribute('type', 'button');
+            button.setAttribute('onclick', 'OpenStatistics()');
+            button.setAttribute('id', 'buttonStatistics ');
+            button.textContent ='Run Statistics';
+
+            ul.appendChild(li);
+            li.appendChild(div);
+            div.appendChild(button);
+        }
+
+        function OpenStatistics()
+        {
+             var url = '{% url 'ViewRunStatistics' runId='runIdReplace' datasetId=99999999954 %}'
+             url = url.replace('runIdReplace',runId)
+             url = url.replace('99999999954',storageDataSet)
+             window.open
+                (
+                    url,
+                    '_blank' // <- This is what makes it open in a new window.
+                );
+        }
+
+        data = "{{workflow|escapejs }}"
+        blockSeperator = "{{blockPortSeparator}}"
+        xOffset = 10;
+		yOffset = 30;
+
+		graph = JSON.parse(data);
+		storageDataSet = graph.intermediateDataSet;
+        runId = graph.runId
+
+        this.configurePreview = function(){
+            var graph = JSON.parse(data);
+            storageDataSet = graph.intermediateDataSet;
+            runId = graph.runId
+            var connections = instance.getConnections()
+            for (i in connections)
+            {
+                var con = connections[i]
+                var params = con.getParameters();
+                var sourceBlock = params["sourceBlock"]
+                var sourcePort = params["sourcePort"]
+
+                // for preview window
+                var getFunc = function(blockName, portName)
+                {
+                   if (blockName === undefined || blockName === null) {
+                        return function(e)
+                        {
+                            // do stuff for menu input here. Or not.
+                        }
+                    }
+
+                    // use closure to capture current values
+                    var foo = blockName
+                    var foo2 = portName
+
+                   return function(e)
+                   {
+                       var url = ConstructPreviewUrl(runId, blockName, portName, storageDataSet.toString())
+
+                       $("body").append("<p id='preview'><img class='ImagePreview' src="+url+"></p>");
+                       $("#preview")
+                           .css("top",(e.pageY - xOffset) + "px")
+                           .css("left",(e.pageX + yOffset) + "px")
+                           .css("position", "absolute")
+                           .css("z-index", "30")
+                           .fadeIn("fast");
+                   }
+                };
+
+                // for in new window
+                var getFunc2 = function(blockName, portName)
+                {
+                   if (blockName === undefined || blockName === null) {
+                        return function(e)
+                        {
+                            // do stuff for menu input here. Or not.
+                        }
+                    }
+
+                    // use closure to capture current values
+                    var foo = blockName
+                    var foo2 = portName
+
+                   return function(e)
+                   {
+                      var url =  ConstructPreviewUrl(runId, blockName, portName, storageDataSet.toString())
+                      window.open
+                                (
+                                    url,
+                                    '_blank' // <- This is what makes it open in a new window.
+                                );
+                   }
+                };
+
+                $(con.canvas).hover(getFunc(sourceBlock,sourcePort),
+                    function(){
+                            $("#preview").remove();
+                    });
+
+                // small hack: this function will be called by a hook in main.js
+                con.canvas.onclick = getFunc2(sourceBlock,sourcePort);
+            }
+        }
+
+        this.connectParametersToInputBoxes = function(ul,parameters){
+        for( index in parameters)
+            {
+                var param = parameters[index]
+
+                // check if form parameter
+                skip = false;
+                checkBlock = null;
+                for (b=0; b<graph.blocks.length;b++)
+                {
+                    if (graph.blocks[b].elementId == param[0])
+                    {
+                        checkBlock =graph.blocks[b] ;
+                        break;
+                    }
+                }
+                if ((checkBlock != null) && (checkBlock.inputList != null) && ("inputList" in checkBlock) )
+                {
+                    for (fp = 0; fp< checkBlock.inputList.length ; fp++)
+                    {
+                        if (param[3] != "in")
+                        {   continue;   }
+
+                        if (checkBlock.inputList[fp].id == param[1] )
+                        {
+                            skip = true;
+                            break;
+                        }
+                    }
+                }
+                if (skip)
+                {   continue;   }
+
+
+                var li = document.createElement('li');
+                var div = document.createElement('div');
+                div.className = "listEntry"
+                var paramInput = document.createElement('input');
+
+                ul.appendChild(li);
+                li.appendChild(div);
+                div.appendChild(document.createTextNode(param[1]));
+                div.appendChild(paramInput);
+
+                paramInput.id = "inputfor_" + param[1] + blockSeperator + param[2]
+                paramInput.type = "text";
+                paramInput.value = param[2]
+                paramInput.disabled = true;
+
+                 instance.connect(
+                        {
+                            target : param[0] ,
+                            source: paramInput.id,
+                            paintStyle:{lineWidth:2,strokeStyle:'rgb(166, 166, 166)'},
+                            anchors:["Right", "Top"],
+                            connector:"StateMachine"
+                        }
+                    );
+            }
+        }
+
+
+        $( document ).ready(function()
+        {
+            if ( {{found|yesno:"true,false"  }} )
+            {
+                var graph = JSON.parse(data);
+                drawFromInstance(graph)
+
+
+                sidebar = document.getElementById("leftSideBar")
+
+
+                if (sidebar)
+                {
+                    var ul = document.createElement('ul');
+                    sidebar.appendChild(ul);
+                    // create statistics button
+
+                    ConstructStatisticsButton(ul)
+
+                    // create inputs menu
+                    connectParametersToInputBoxes(ul,graph.parameters)
+                }
+                configurePreview();
+
+
+
+            }
+            else
+            {
+                alert("Annotation file for workflow not found.");
+            }
+        });
+    </script>
+{% endblock %}
